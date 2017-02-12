@@ -1,0 +1,113 @@
+---
+title: "Detecting the Quality of Activity"
+author: "Esko Nuutila"
+date: "12 Feb 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+# ifelse(get(env = parent.frame(n = 9), 'input') == 'code.Rmd', TRUE, FALSE)
+knitr::opts_chunk$set(error=TRUE, echo = TRUE, message = FALSE, cache=TRUE)
+inCode <<- ifelse(get(env = parent.frame(n = 9), 'input') == 'code.Rmd', TRUE, FALSE)
+indexMsg <- function () {
+        if(!inCode) {
+                "([See the code](code.html))"
+        } else {
+                "([Hide the code](index.html))"
+        }
+}
+library(knitr)
+library(dplyr)
+library(ggplot2)
+library(caret)
+```
+
+### Executive Summary
+
+We built a random forest based predictor for recognizing, how the test subjects did unilateral dumbbell biceps curls. The dataset used consists of accelometer data collected from six individuals doing the curls in five predefined ways. The goal was to classify the way of doing the movement accurately just using the accelerometer data. The out of sample error estimate of our classifier is 3.2%.
+
+## 1. Introduction
+
+In this study, we build a model for predicting the quality of movement for people doing unilateral dumbbell biceps curl. We want to be able to classify the quality of movement of the test subjects to the following five categories: exactly according to the specification (Class A), throwing the elbows to the front (Class B), lifting the dumbbell only halfway (Class C), lowering the dumbbell only halfway (Class D) and throwing the hips to the front (Class E). Our prediction model is based on a dataset containing data from accelerometers on the belt, forearm, arm, and dumbell collected from 6 participants. The dataset is originally from [http://groupware.les.inf.puc-rio.br/har](http://groupware.les.inf.puc-rio.br/har).
+
+## 2. Exploratory data analysis
+
+The training data for this project are available  [here](https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv). The training data consist of 19622 observations of 160 variables.
+
+```{r}
+training <- read.csv('training.csv') %>% select(-X) # We drop the observation ID
+```
+
+## 2. Building the model
+
+We first tried multivariable linear regression, but the prediction power of the models remained low. Then we tried random trees, and also these did not produce good results. We then decided to use random forests as our method.
+
+We did not have any application area knowledge about the variables that could be good predictors. The number of potential variables is rather large, 55 if we take only the numeric variables and ignore time. Time would probably be very useful in modeling, but these techniques are out of question here, because our model will be evaluated based on single unrelated observations.
+
+We plotted the class of the activity versus time for each of the six subjects. It came out that they performed the moves in the order A, B, C, D, E, and the whole exercise took 2-3 minutes. Plotting the variables against the other variables did not reveal any obvious patterns that would have helped us in predictor selection.
+
+To have some starting point we computed the correlation of each of the numeric variables to the outcome variable class and sorted them based on absolute value.
+
+```{r echo=TRUE}
+cors <- data.frame(var = colnames(training),
+                   correlation = sapply(1:(ncol(training)),
+                                        function (i) {
+                                                col <- training[[i]]
+                                                if (is.numeric(col)) {
+                                                        c <- cor(col, as.numeric(training$classe))
+                                                        if (!is.na(c)) c else NA
+                                                } else NA
+                                        }))
+cors <- arrange(cors[complete.cases(cors),], desc(abs(correlation)))
+```
+
+Using the full training set for trying out different selection of variables turned out to be too slow. Thus, we tried out with smaller samples of the training set. We randomly split the training set into two parts, the actual training set and used the remaining observations for testing. The size of the actual training set was first 100 and gradually we increased it up to 4000. At the same time we added more variables to the model in the decreasing order of absolute correlation to the outcome class. We used the following function `buildModel` for splitting the original training set into a smaller actual training set and a test set, and for building the model.
+
+Our approach is kind of cross validation, because for each new set of candidate predictors, we have a new training set and a new test set.
+
+```{r echo=TRUE}
+buildModel <- function (nvars, sample_size=100) {
+        vars <- cors$var[1:nvars]
+        print(paste("Building model: classe ~", paste(vars, collapse = " + ")))
+        print(paste("Using", sample_size, "randomly selected observations as a training set"))
+        dataset <- select_(training, .dots=c('classe', intersect(colnames(training), vars)))
+        inTraining <- sample(nrow(dataset), size=sample_size)
+        useForTraining <<- dataset[inTraining,]
+        useForTesting <<- dataset[-inTraining,]
+        fitMod <<- train(data=useForTraining, method="rf", classe ~ .)
+        testSetPredictionAccuracy <<- round(mean(predict(fitMod,
+                                                         newdata=useForTesting) == useForTesting$classe), 5)
+        print(paste("Prediction accuracy for the remaining", nrow(training)-sample_size,
+                    "observations is", testSetPredictionAccuracy))
+}
+```
+
+Below is an example of running the function with only four predictors and 200 observation training set.
+
+```{r, echo=TRUE}
+buildModel(4, 200)
+```
+
+After many trails, we finally decided to use 15 variables, and then we run the model builder using almost the full training set.
+
+```{r echo=TRUE}
+buildModel(15, 18000)
+fm15_18000 <- fitMod
+```
+
+## 3. Accuracy
+
+Package `caret` gives a nice printouts about the final model and the model building.
+
+```{r}
+print(fm15_18000$finalModel)
+print(fm15_18000)
+```
+
+As we see, the model contains 500 trees and has an out-of-bag error rate of 3.2%. We should expect the out of sample error rate be about the same. The prediction error for the set of observations that we did not use for building this model was `r (1-testSetPredictionAccuracy)*100`, which is close to the out-of-bag error rate shown above. We think that this is quite good taking into account the rather small amount of time that we could use on building the model.
+
+From the confusion matrix we see, that class A activity is classified most accurately.
+
+## 4. What to learn next?
+
+It would be nice to learn more about choosing the predictors in random forests. Activity recognition seems to be often based on temporal probabilistic models and our data would make this kind of approach possible.
