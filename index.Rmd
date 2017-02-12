@@ -6,16 +6,7 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-# ifelse(get(env = parent.frame(n = 9), 'input') == 'code.Rmd', TRUE, FALSE)
 knitr::opts_chunk$set(error=TRUE, echo = TRUE, message = FALSE, cache=TRUE)
-inCode <<- ifelse(get(env = parent.frame(n = 9), 'input') == 'code.Rmd', TRUE, FALSE)
-indexMsg <- function () {
-        if(!inCode) {
-                "([See the code](code.html))"
-        } else {
-                "([Hide the code](index.html))"
-        }
-}
 library(knitr)
 library(dplyr)
 library(ggplot2)
