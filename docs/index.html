@@ -135,13 +135,16 @@ $(document).ready(function () {
 <div id="exploratory-data-analysis" class="section level2">
 <h2>2. Exploratory data analysis</h2>
 <p>The training data for this project are available <a href="https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv">here</a>. The training data consist of 19622 observations of 160 variables.</p>
-<pre class="r"><code>training &lt;- read.csv('training.csv') %&gt;% select(-X) # We drop the observation ID</code></pre>
+<pre class="r"><code>if (!file.exists('training.csv'))
+        download.file('https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv',
+                      destfile = 'training.csv')
+training &lt;- read.csv('training.csv') %&gt;% select(-X) # We drop the observation ID</code></pre>
 </div>
 <div id="building-the-model" class="section level2">
 <h2>2. Building the model</h2>
 <p>We first tried multivariable linear regression, but the prediction power of the models remained low. Then we tried random trees, and also these did not produce good results. We then decided to use random forests as our method.</p>
 <p>We did not have any application area knowledge about the variables that could be good predictors. The number of potential variables is rather large, 55 if we take only the numeric variables and ignore time. Time would probably be very useful in modeling, but these techniques are out of question here, because our model will be evaluated based on single unrelated observations.</p>
-<p>We plotted the class of the activity versus time for each of the six subjects. It came out that they performed the moves in the order A, B, C, D, E, and the whole exercise took 2-3 minutes. Plotting the variables against the other variables did not reveal any obvious patterns that would have helped us in predictor selection.</p>
+<p>We plotted the class of the activity versus time for each of the six subjects. It came out that they performed the moves in the order A, B, C, D, E, and the whole exercise took 2-3 minutes. Plotting the class against the other variables did not reveal any obvious patterns that would have helped us in predictor selection.</p>
 <p>To have some starting point we computed the correlation of each of the numeric variables to the outcome variable class and sorted them based on absolute value.</p>
 <pre class="r"><code>cors &lt;- data.frame(var = colnames(training),
                    correlation = sapply(1:(ncol(training)),
@@ -153,7 +156,7 @@ $(document).ready(function () {
                                                 } else NA
                                         }))
 cors &lt;- arrange(cors[complete.cases(cors),], desc(abs(correlation)))</code></pre>
-<p>Using the full training set for trying out different selection of variables turned out to be too slow. Thus, we tried out with smaller samples of the training set. We randomly split the training set into two parts, the actual training set and used the remaining observations for testing. The size of the actual training set was first 100 and gradually we increased it up to 4000. At the same time we added more variables to the model in the decreasing order of absolute correlation to the outcome class. We used the following function <code>buildModel</code> for splitting the original training set into a smaller actual training set and a test set, and for building the model.</p>
+<p>Using the full training set for trying out different selection of variables turned out to be slow. Thus, we tried out with smaller samples of the training set. We randomly split the training set into two parts, the actual training set and used the remaining observations for testing. The size of the actual training set was first 100 and gradually we increased it up to 4000. At the same time we added more variables to the model in the decreasing order of absolute correlation to the outcome class. For each set of variables and each sample size, we used the following function <code>buildModel</code> for splitting the original training set into a smaller actual training set and a test set, and for building the model.</p>
 <p>Our approach is kind of cross validation, because for each new set of candidate predictors, we have a new training set and a new test set.</p>
 <pre class="r"><code>buildModel &lt;- function (nvars, sample_size=100) {
         vars &lt;- cors$var[1:nvars]
@@ -174,7 +177,7 @@ cors &lt;- arrange(cors[complete.cases(cors),], desc(abs(correlation)))</code></
 <pre><code>## [1] &quot;Building model: classe ~ pitch_forearm + magnet_arm_x + magnet_belt_y + magnet_arm_y&quot;
 ## [1] &quot;Using 200 randomly selected observations as a training set&quot;
 ## [1] &quot;Prediction accuracy for the remaining 19422 observations is 0.49861&quot;</code></pre>
-<p>After many trails, we finally decided to use 15 variables, and then we run the model builder using almost the full training set.</p>
+<p>After many trials with different number of variables and different sample size, we finally decided to use 15 variables, and then we run the model builder using almost the full training set.</p>
 <pre class="r"><code>buildModel(15, 18000)</code></pre>
 <pre><code>## [1] &quot;Building model: classe ~ pitch_forearm + magnet_arm_x + magnet_belt_y + magnet_arm_y + accel_arm_x + accel_forearm_x + magnet_forearm_x + magnet_belt_z + pitch_arm + total_accel_forearm + magnet_dumbbell_z + magnet_arm_z + total_accel_arm + accel_dumbbell_x + magnet_forearm_y&quot;
 ## [1] &quot;Using 18000 randomly selected observations as a training set&quot;
@@ -219,12 +222,12 @@ cors &lt;- arrange(cors[complete.cases(cors),], desc(abs(correlation)))</code></
 ## 
 ## Accuracy was used to select the optimal model using  the largest value.
 ## The final value used for the model was mtry = 2.</code></pre>
-<p>As we see, the model contains 500 trees and has an out-of-bag error rate of 3.2%. We should expect the out of sample error rate be about the same. The prediction error for the set of observations that we did not use for building this model was 50.139, which is close to the out-of-bag error rate shown above. We think that this is quite good taking into account the rather small amount of time that we could use on building the model.</p>
+<p>As we see, the model contains 500 trees and has an out-of-bag error rate of 3.2%. We should expect the out of sample error rate to be about the same. The prediction error for the set of observations that we did not use for building this model was 2.1%, which is close to the out-of-bag error rate shown above. We think that this is quite good taking into account the rather small amount of time that we could use on building the model.</p>
 <p>From the confusion matrix we see, that class A activity is classified most accurately.</p>
 </div>
 <div id="what-to-learn-next" class="section level2">
 <h2>4. What to learn next?</h2>
-<p>It would be nice to learn more about choosing the predictors in random forests. Activity recognition seems to be often based on temporal probabilistic models and our data would make this kind of approach possible.</p>
+<p>It would be nice to learn more about choosing the predictors in random forests.</p>
 </div>
 
 
