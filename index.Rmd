@@ -15,7 +15,7 @@ library(caret)
 
 ### Executive Summary
 
-We built a random forest based predictor for recognizing, how the test subjects did unilateral dumbbell biceps curls. The dataset used consists of accelometer data collected from six individuals doing the curls in five predefined ways. The goal was to classify the way of doing the movement accurately just using the accelerometer data. The out of sample error estimate of our classifier is 3.2%.
+We built a random forest based predictor for recognizing, how the test subjects did unilateral dumbbell biceps curls. The dataset used consists of accelerometer data collected from six individuals doing the curls in five predefined ways. The goal was to classify the way of doing the movement accurately just using the accelerometer data. The out of sample error estimate of our classifier is 3.2%.
 
 ## 1. Introduction
 
