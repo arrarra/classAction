@@ -126,7 +126,7 @@ $(document).ready(function () {
 
 <div id="executive-summary" class="section level3">
 <h3>Executive Summary</h3>
-<p>We built a random forest based predictor for recognizing, how the test subjects did unilateral dumbbell biceps curls. The dataset used consists of accelometer data collected from six individuals doing the curls in five predefined ways. The goal was to classify the way of doing the movement accurately just using the accelerometer data. The out of sample error estimate of our classifier is 6.2%.</p>
+<p>We built a random forest based predictor for recognizing, how the test subjects did unilateral dumbbell biceps curls. The dataset used consists of accelometer data collected from six individuals doing the curls in five predefined ways. The goal was to classify the way of doing the movement accurately just using the accelerometer data. The out of sample error estimate of our classifier is 3.2%.</p>
 </div>
 <div id="introduction" class="section level2">
 <h2>1. Introduction</h2>
@@ -154,7 +154,7 @@ $(document).ready(function () {
                                         }))
 cors &lt;- arrange(cors[complete.cases(cors),], desc(abs(correlation)))</code></pre>
 <p>Using the full training set for trying out different selection of variables turned out to be too slow. Thus, we tried out with smaller samples of the training set. We randomly split the training set into two parts, the actual training set and used the remaining observations for testing. The size of the actual training set was first 100 and gradually we increased it up to 4000. At the same time we added more variables to the model in the decreasing order of absolute correlation to the outcome class. We used the following function <code>buildModel</code> for splitting the original training set into a smaller actual training set and a test set, and for building the model.</p>
-<p>Thus, our method did kind of cross validation, only here the training set was much smaller than the test set.</p>
+<p>Our approach is kind of cross validation, because for each new set of candidate predictors, we have a new training set and a new test set.</p>
 <pre class="r"><code>buildModel &lt;- function (nvars, sample_size=100) {
         vars &lt;- cors$var[1:nvars]
         print(paste(&quot;Building model: classe ~&quot;, paste(vars, collapse = &quot; + &quot;)))
@@ -175,13 +175,16 @@ cors &lt;- arrange(cors[complete.cases(cors),], desc(abs(correlation)))</code></
 ## [1] &quot;Using 200 randomly selected observations as a training set&quot;
 ## [1] &quot;Prediction accuracy for the remaining 19422 observations is 0.49861&quot;</code></pre>
 <p>After many trails, we finally decided to use 15 variables, and then we run the model builder using almost the full training set.</p>
-<pre class="r"><code># buildModel(15, 18000)
-# fm15_18000 &lt;- fitMod</code></pre>
+<pre class="r"><code>buildModel(15, 18000)</code></pre>
+<pre><code>## [1] &quot;Building model: classe ~ pitch_forearm + magnet_arm_x + magnet_belt_y + magnet_arm_y + accel_arm_x + accel_forearm_x + magnet_forearm_x + magnet_belt_z + pitch_arm + total_accel_forearm + magnet_dumbbell_z + magnet_arm_z + total_accel_arm + accel_dumbbell_x + magnet_forearm_y&quot;
+## [1] &quot;Using 18000 randomly selected observations as a training set&quot;
+## [1] &quot;Prediction accuracy for the remaining 1622 observations is 0.97904&quot;</code></pre>
+<pre class="r"><code>fm15_18000 &lt;- fitMod</code></pre>
 </div>
 <div id="accuracy" class="section level2">
 <h2>3. Accuracy</h2>
 <p>Package <code>caret</code> gives a nice printouts about the final model and the model building.</p>
-<pre class="r"><code>print(fitMod$finalModel)</code></pre>
+<pre class="r"><code>print(fm15_18000$finalModel)</code></pre>
 <pre><code>## 
 ## Call:
 ##  randomForest(x = x, y = y, mtry = param$mtry) 
@@ -189,33 +192,34 @@ cors &lt;- arrange(cors[complete.cases(cors),], desc(abs(correlation)))</code></
 ##                      Number of trees: 500
 ## No. of variables tried at each split: 2
 ## 
-##         OOB estimate of  error rate: 54.5%
+##         OOB estimate of  error rate: 3.17%
 ## Confusion matrix:
-##    A B  C  D  E class.error
-## A 31 5  5  8  3   0.4038462
-## B  6 4 13  8  5   0.8888889
-## C  4 9 14  7  4   0.6315789
-## D  6 6  2 15  3   0.5312500
-## E  4 5  2  4 27   0.3571429</code></pre>
-<pre class="r"><code>print(fitMod)</code></pre>
+##      A    B    C    D    E class.error
+## A 5060   29   12   16    2  0.01152569
+## B   96 3331   31   13    9  0.04281609
+## C    2   64 3031   36    9  0.03532782
+## D   11    6  141 2794    4  0.05480379
+## E    3   16   24   47 3213  0.02724796</code></pre>
+<pre class="r"><code>print(fm15_18000)</code></pre>
 <pre><code>## Random Forest 
 ## 
-## 200 samples
-##   3 predictor
-##   5 classes: 'A', 'B', 'C', 'D', 'E' 
+## 18000 samples
+##    15 predictor
+##     5 classes: 'A', 'B', 'C', 'D', 'E' 
 ## 
 ## No pre-processing
 ## Resampling: Bootstrapped (25 reps) 
-## Summary of sample sizes: 200, 200, 200, 200, 200, 200, ... 
+## Summary of sample sizes: 18000, 18000, 18000, 18000, 18000, 18000, ... 
 ## Resampling results across tuning parameters:
 ## 
 ##   mtry  Accuracy   Kappa    
-##   2     0.4304631  0.2844098
-##   3     0.4209360  0.2729661
+##    2    0.9556779  0.9438723
+##    8    0.9546983  0.9426378
+##   15    0.9434342  0.9283791
 ## 
 ## Accuracy was used to select the optimal model using  the largest value.
 ## The final value used for the model was mtry = 2.</code></pre>
-<p>As we see, the model contains 500 trees and has an out-of-bag error rate of %. The prediction error for the set of observations that we did not use for building this model was 50.139, which is close to the out-of-bag error rate shown above. So, we should expect the out of sample error rate be about the same. We think that this is quite good taking into account the rather small amount of time that we could use on building the model.</p>
+<p>As we see, the model contains 500 trees and has an out-of-bag error rate of 3.2%. We should expect the out of sample error rate be about the same. The prediction error for the set of observations that we did not use for building this model was 50.139, which is close to the out-of-bag error rate shown above. We think that this is quite good taking into account the rather small amount of time that we could use on building the model.</p>
 <p>From the confusion matrix we see, that class A activity is classified most accurately.</p>
 </div>
 <div id="what-to-learn-next" class="section level2">
