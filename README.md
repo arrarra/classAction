@@ -3,8 +3,8 @@
 ## Files
 
 * index.Rmd - The markup file containing the analysis
-* index.html - The compiled HTML file
+* index.html - index.Rmd compiled to HTML
 
-## GitHub Pages
+## index.html in gh-pages
 
-You can read the HTML file of the analysis in [https://arrarra.github.io/classAction/](https://arrarra.github.io/classAction/).
+You can read index.html in [gh-pages](https://arrarra.github.io/classAction/).
